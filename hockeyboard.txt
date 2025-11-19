@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hockey Coach Board</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      background: #0b1020;
+      color: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 16px;
+      gap: 16px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      text-align: center;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .toolbar button {
+      border: none;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      background: #21263a;
+      color: #f5f5f5;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.1s;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+
+    .toolbar button span.swatch {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #f5f5f5;
+    }
+
+    .toolbar button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+      background: #2b3350;
+    }
+
+    .toolbar button:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    }
+
+    .toolbar button.home-player .swatch {
+      background: #1a8cff;
+    }
+
+    .toolbar button.away-player .swatch {
+      background: #ff3b3b;
+    }
+
+    .toolbar button.puck .swatch {
+      background: #111111;
+    }
+
+    .toolbar button.clear {
+      background: #b32d3b;
+    }
+
+    .toolbar button.clear:hover {
+      background: #d43b4c;
+    }
+
+    .hint {
+      text-align: center;
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+
+    /* Rink board */
+    .rink-wrapper {
+      background: radial-gradient(circle at top, #1d2840 0, #050814 55%);
+      padding: 10px;
+      border-radius: 22px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+    }
+
+    .rink {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 2 / 1; /* Wide rink */
+      background: #f7fbff;
+      border-radius: 22px;
+      overflow: hidden;
+      border: 4px solid #e0e0e0;
+    }
+
+    /* Rink markings */
+    .rink::before,
+    .rink::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    /* Center red line */
+    .rink::before {
+      border-left: 4px solid #d32f2f;
+      left: 50%;
+    }
+
+    /* Blue lines */
+    .blue-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: #1565c0;
+    }
+
+    .blue-line.left {
+      left: 25%;
+    }
+
+    .blue-line.right {
+      right: 25%;
+    }
+
+    /* Faceoff circles */
+    .circle {
+      position: absolute;
+      width: 18%;
+      aspect-ratio: 1/1;
+      border-radius: 50%;
+      border: 3px solid #1565c0;
+      box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.2);
+    }
+
+    .circle.center {
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      border-color: #d32f2f;
+      box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.2);
+    }
+
+    .circle.offense-left {
+      left: 14%;
+      top: 30%;
+    }
+
+    .circle.offense-right {
+      left: 14%;
+      bottom: 30%;
+    }
+
+    .circle.defense-left {
+      right: 14%;
+      top: 30%;
+    }
+
+    .circle.defense-right {
+      right: 14%;
+      bottom: 30%;
+    }
+
+    /* Goal creases (simplified) */
+    .crease {
+      position: absolute;
+      width: 6%;
+      aspect-ratio: 1.3 / 1;
+      border-radius: 50% 50% 50% 50%;
+      border: 3px solid #1565c0;
+    }
+
+    .crease.left {
+      left: 1.5%;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .crease.right {
+      right: 1.5%;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    /* Draggable pieces */
+    .piece {
+      position: absolute;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+      border: 2px solid rgba(0, 0, 0, 0.45);
+      transform: translate(-50%, -50%);
+    }
+
+    .piece.dragging {
+      cursor: grabbing;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55);
+    }
+
+    .piece.player.home {
+      background: #1a8cff;
+      color: #ffffff;
+    }
+
+    .piece.player.away {
+      background: #ff3b3b;
+      color: #ffffff;
+    }
+
+    .piece.puck {
+      width: 24px;
+      height: 24px;
+      background: #111111;
+      border-radius: 50%;
+      border: 2px solid #000000;
+    }
+
+    @media (max-width: 700px) {
+      h1 {
+        font-size: 1.3rem;
+      }
+
+      .piece {
+        width: 30px;
+        height: 30px;
+        font-size: 0.75rem;
+      }
+
+      .piece.puck {
+        width: 20px;
+        height: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <h1>Hockey Coach Board</h1>
+
+    <div class="toolbar">
+      <button class="home-player" id="addHome">
+        <span class="swatch"></span>
+        Add Home Player
+      </button>
+      <button class="away-player" id="addAway">
+        <span class="swatch"></span>
+        Add Away Player
+      </button>
+      <button class="puck" id="addPuck">
+        <span class="swatch"></span>
+        Add Puck
+      </button>
+      <button class="clear" id="clearBoard">
+        🧹 Clear Board
+      </button>
+    </div>
+
+    <p class="hint">
+      Tip: Click any button to drop a piece at center ice, then drag it to position.
+      Double-click a piece to delete it.
+    </p>
+
+    <div class="rink-wrapper">
+      <div class="rink" id="rink">
+        <!-- Rink lines & circles -->
+        <div class="blue-line left"></div>
+        <div class="blue-line right"></div>
+
+        <div class="circle center"></div>
+        <div class="circle offense-left"></div>
+        <div class="circle offense-right"></div>
+        <div class="circle defense-left"></div>
+        <div class="circle defense-right"></div>
+
+        <div class="crease left"></div>
+        <div class="crease right"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const rink = document.getElementById("rink");
+      const addHomeBtn = document.getElementById("addHome");
+      const addAwayBtn = document.getElementById("addAway");
+      const addPuckBtn = document.getElementById("addPuck");
+      const clearBtn = document.getElementById("clearBoard");
+
+      let homeCount = 0;
+      let awayCount = 0;
+
+      let draggingPiece = null;
+      let dragOffsetX = 0;
+      let dragOffsetY = 0;
+      let rinkRect = null;
+
+      function createPiece(type, team) {
+        const piece = document.createElement("div");
+        piece.classList.add("piece");
+
+        if (type === "player") {
+          piece.classList.add("player", team);
+          if (team === "home") {
+            homeCount++;
+            piece.textContent = "H" + homeCount;
+          } else {
+            awayCount++;
+            piece.textContent = "A" + awayCount;
+          }
+        } else if (type === "puck") {
+          piece.classList.add("puck");
+        }
+
+        // Place at center ice initially
+        rinkRect = rink.getBoundingClientRect();
+        const centerX = rinkRect.width / 2;
+        const centerY = rinkRect.height / 2;
+
+        piece.style.left = centerX + "px";
+        piece.style.top = centerY + "px";
+
+        // Drag handlers
+        piece.addEventListener("pointerdown", onPointerDownPiece);
+        piece.addEventListener("dblclick", () => {
+          piece.remove();
+        });
+
+        rink.appendChild(piece);
+      }
+
+      function onPointerDownPiece(e) {
+        draggingPiece = e.currentTarget;
+        draggingPiece.classList.add("dragging");
+        draggingPiece.setPointerCapture(e.pointerId);
+
+        rinkRect = rink.getBoundingClientRect();
+
+        const pieceRect = draggingPiece.getBoundingClientRect();
+        dragOffsetX = e.clientX - pieceRect.left;
+        dragOffsetY = e.clientY - pieceRect.top;
+
+        document.addEventListener("pointermove", onPointerMove);
+        document.addEventListener("pointerup", onPointerUp);
+        document.addEventListener("pointercancel", onPointerUp);
+      }
+
+      function onPointerMove(e) {
+        if (!draggingPiece) return;
+        if (!rinkRect) rinkRect = rink.getBoundingClientRect();
+
+        let x = e.clientX - rinkRect.left - dragOffsetX + draggingPiece.offsetWidth / 2;
+        let y = e.clientY - rinkRect.top - dragOffsetY + draggingPiece.offsetHeight / 2;
+
+        // constrain within rink
+        const halfW = draggingPiece.offsetWidth / 2;
+        const halfH = draggingPiece.offsetHeight / 2;
+
+        const minX = halfW;
+        const maxX = rinkRect.width - halfW;
+        const minY = halfH;
+        const maxY = rinkRect.height - halfH;
+
+        x = Math.max(minX, Math.min(maxX, x));
+        y = Math.max(minY, Math.min(maxY, y));
+
+        draggingPiece.style.left = x + "px";
+        draggingPiece.style.top = y + "px";
+      }
+
+      function onPointerUp(e) {
+        if (draggingPiece) {
+          draggingPiece.classList.remove("dragging");
+          try {
+            draggingPiece.releasePointerCapture(e.pointerId);
+          } catch (_) {
+            // ignore if already released
+          }
+        }
+        draggingPiece = null;
+        document.removeEventListener("pointermove", onPointerMove);
+        document.removeEventListener("pointerup", onPointerUp);
+        document.removeEventListener("pointercancel", onPointerUp);
+      }
+
+      addHomeBtn.addEventListener("click", () => {
+        createPiece("player", "home");
+      });
+
+      addAwayBtn.addEventListener("click", () => {
+        createPiece("player", "away");
+      });
+
+      addPuckBtn.addEventListener("click", () => {
+        createPiece("puck");
+      });
+
+      clearBtn.addEventListener("click", () => {
+        const pieces = rink.querySelectorAll(".piece");
+        pieces.forEach((p) => p.remove());
+        homeCount = 0;
+        awayCount = 0;
+      });
+    })();
+  </script>
+</body>
+</html>
